@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pomodoro Naturklang Timer – UI Redesign</title>
+  <style>
+    :root{
+      --bg:#0b1220;--panel:#121926;--panel2:#0e1624;--muted:#94a2be;--text:#eef2ff;--accent:#6aa6ff;--accent2:#8ef0c9;--ring1:#ffb347;--ring2:#ff6a6a;--ok:#37c172;--warn:#ff6a8e;
+      --shadow:0 10px 30px rgba(0,0,0,.35), 0 2px 8px rgba(0,0,0,.25);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:radial-gradient(1000px 600px at 10% -30%, #11203a 0%, #0b1220 50%) no-repeat, #0b1220;color:var(--text);}
+    .wrap{max-width:1100px;margin:24px auto;padding:8px 20px}
+    header{margin-bottom:12px}
+    h1{font-size:22px;margin:0 0 8px 6px;color:#f3f6ff;}
+
+    .app{display:grid;grid-template-columns:1.2fr .8fr;gap:18px}
+    @media (max-width:900px){.app{grid-template-columns:1fr}}
+
+    .card{background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.03));border:1px solid rgba(255,255,255,.08);border-radius:22px;box-shadow:var(--shadow)}
+
+    /* LEFT: TIMER */
+    .timer{display:grid;grid-template-rows:auto 1fr auto;gap:14px;padding:22px}
+    .phaseTitle{font-weight:700;text-align:center;color:#ffde9c;text-shadow:0 2px 10px rgba(255,210,120,.35)}
+    .ringBox{display:grid;place-items:center;}
+    .ring{width:min(72vw,420px);max-width:540px;aspect-ratio:1/1;display:grid;place-items:center;}
+    .ring svg{width:100%;height:100%;display:block;}
+    .inner{position:relative;display:grid;place-items:center}
+    .time{font-size:clamp(36px,9vw,64px);font-weight:800;letter-spacing:.5px;}
+    .centerCaption{margin-top:6px;font-weight:600;color:var(--muted)}
+    .tomato{font-size:clamp(40px,8vw,64px);filter:drop-shadow(0 2px 6px rgba(0,0,0,.35));}
+    .controls{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:6px}
+    .btn{cursor:pointer;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:var(--text);padding:12px 16px;border-radius:999px}
+    .btn.primary{background:linear-gradient(180deg,rgba(55,193,114,.22),rgba(55,193,114,.1));border-color:rgba(55,193,114,.5)}
+    .btn.warn{background:linear-gradient(180deg,rgba(255,106,142,.22),rgba(255,106,142,.1));border-color:rgba(255,106,142,.5)}
+    .btn:disabled{opacity:.55;cursor:not-allowed}
+
+    /* RIGHT: SETTINGS */
+    .panel{padding:20px;display:grid;gap:14px}
+    .row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center}
+    .label{font-size:13px;color:var(--muted)}
+    .ctl{background:#0d1628;border:1px solid rgba(255,255,255,.08);color:var(--text);border-radius:14px;padding:10px 12px}
+    .slider{appearance:none;width:100%}
+    .slider::-webkit-slider-thumb{appearance:none;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 0 0 3px #2b4570}
+    .slider::-webkit-slider-runnable-track{height:6px;border-radius:999px;background:linear-gradient(90deg,#243352,#1a2a49)}
+    .switch{appearance:none;width:44px;height:26px;border-radius:999px;background:#2a3654;position:relative;border:1px solid rgba(255,255,255,.12);cursor:pointer}
+    .switch::after{content:"";position:absolute;inset:3px 24px 3px 3px;border-radius:999px;background:white;transition:all .18s}
+    .switch:checked{background:#37c172}
+    .switch:checked::after{inset:3px 3px 3px 24px}
+
+    .footer{margin-top:12px;color:var(--muted);font-size:12.5px;text-align:center}
+    .small{font-size:12px;color:var(--muted)}
+
+    details.dev{margin-top:4px}
+    details.dev summary{cursor:pointer;color:#bcd3ff}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Pomodoro Fokus Timer</h1>
+    </header>
+
+    <div class="app">
+      <!-- LEFT: TIMER -->
+      <section class="card timer">
+        <div class="phaseTitle" id="phaseTitle">Konzentrationsphase</div>
+
+        <div class="ringBox">
+          <div class="ring">
+            <svg viewBox="0 0 100 100" aria-hidden="true">
+              <!-- Track -->
+              <defs>
+                <linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stop-color="var(--ring1)"/>
+                  <stop offset="100%" stop-color="var(--ring2)"/>
+                </linearGradient>
+              </defs>
+              <circle cx="50" cy="50" r="45" stroke="rgba(255,255,255,.09)" stroke-width="8" fill="none" />
+              <circle id="ringProgress" cx="50" cy="50" r="45" stroke="url(#ringGrad)" stroke-width="8" fill="none" stroke-linecap="round" transform="rotate(-90 50 50)" stroke-dasharray="282.6" stroke-dashoffset="282.6" />
+            </svg>
+            <div class="inner">
+              <div class="tomato" aria-hidden>🍅</div>
+              <div class="time" id="time">25:00</div>
+              <div class="centerCaption" id="centerCaption">Fokus!</div>
+              <div class="small" id="cycleInfo" style="margin-top:6px">Einzelzyklus</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="controls">
+          <button id="startBtn" class="btn primary">Zyklus starten</button>
+          <button id="pauseBtn" class="btn" disabled>Pausieren</button>
+          <button id="resetBtn" class="btn warn" disabled>Zurücksetzen</button>
+        </div>
+      </section>
+
+      <!-- RIGHT: SETTINGS -->
+      <aside class="card panel">
+        <div class="row">
+          <div class="label">Ansagen per Sprachausgabe</div>
+          <input id="speakToggle" class="switch" type="checkbox" checked>
+        </div>
+
+        <div class="row">
+          <div class="label">Dauer Konzentrationsphase (Min)</div>
+          <input id="focusMinutes" class="ctl" type="number" min="1" max="180" value="25">
+        </div>
+        <input id="focusRange" class="slider" type="range" min="1" max="180" value="25">
+
+        <div class="row">
+          <div class="label">Dauer Pausenphase (Min)</div>
+          <input id="breakMinutes" class="ctl" type="number" min="1" max="60" value="5">
+        </div>
+        <input id="breakRange" class="slider" type="range" min="1" max="60" value="5">
+
+        <div class="row">
+          <div class="label">Naturklang – Konzentrationsphase</div>
+          <select id="focusSound" class="ctl">
+            <option value="rain">Regen</option>
+            <option value="ocean">Meeresrauschen</option>
+            <option value="forest">Wald / Wind</option>
+            <option value="silence">Stille</option>
+          </select>
+        </div>
+
+        <div class="row">
+          <div class="label">Klang – Pausenphase</div>
+          <select id="breakSound" class="ctl">
+            <option value="ambient">Ambient Pad</option>
+            <option value="chimes">Leises Glockenspiel</option>
+            <option value="ocean">Meeresrauschen</option>
+            <option value="silence">Stille</option>
+          </select>
+        </div>
+
+        <div class="row">
+          <div class="label">Sanftes Aus-/Einblenden</div>
+          <select id="ducking" class="ctl">
+            <option value="true">Aktiv</option>
+            <option value="false">Deaktiviert</option>
+          </select>
+        </div>
+
+        <div class="row">
+          <div class="label">Anzahl Zyklen</div>
+          <input id="cyclesCount" class="ctl" type="number" min="1" max="24" value="1">
+        </div>
+
+        <div class="row">
+          <div class="label">Lautstärke (gesamt)</div>
+          <input id="masterVol" class="slider" type="range" min="0" max="1" step="0.01" value="0.6">
+        </div>
+
+        <details class="dev">
+          <summary>Tests (schnelle Überprüfung)</summary>
+          <div class="small" style="margin:6px 0 8px">Setzt kurze Zeiten & startet automatisch.</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button id="test1" class="btn">2× (0.1 / 0.05 min)</button>
+            <button id="test2" class="btn">3× (0.2 / 0.1 min)</button>
+          </div>
+        </details>
+
+      </aside>
+    </div>
+
+    <p class="footer">Hinweis: Diese Seite nutzt die <em>Web Audio API</em> und die <em>Sprachausgabe</em> des Browsers. Auf Mobilgeräten muss die Audiowiedergabe mit einem Button gestartet werden (erledigt durch „Zyklus starten“).</p>
+  </div>
+
+  <!-- End Cycle Modal -->
+  <dialog id="repeatDialog" class="card" style="padding:0;max-width:min(520px,94vw)">
+    <div style="padding:18px">
+      <h3 style="margin:0 0 8px 0">Der Zyklus ist beendet</h3>
+      <p style="margin:0 0 12px 0">Möchtest du einen weiteren starten?</p>
+      <div style="display:flex;gap:10px">
+        <button id="repeatYes" class="btn primary">Ja, weiter</button>
+        <button id="repeatNo" class="btn">Nein, stoppen</button>
+      </div>
+    </div>
+  </dialog>
+
+  <script>
+    // ————————————————————————————————
+    // Shortcuts
+    // ————————————————————————————————
+    const $ = (s)=>document.querySelector(s);
+    const timeEl=$('#time');
+    const ringEl=$('#ringProgress');
+    const phaseTitle=$('#phaseTitle');
+    const caption=$('#centerCaption');
+    const cycleInfoEl=$('#cycleInfo');
+
+    const startBtn=$('#startBtn');
+    const pauseBtn=$('#pauseBtn');
+    const resetBtn=$('#resetBtn');
+
+    // Controls
+    const speakToggle=$('#speakToggle');
+    const focusMinutesEl=$('#focusMinutes');
+    const breakMinutesEl=$('#breakMinutes');
+    const focusRange=$('#focusRange');
+    const breakRange=$('#breakRange');
+    const focusSoundEl=$('#focusSound');
+    const breakSoundEl=$('#breakSound');
+    const duckingEl=$('#ducking');
+    const cyclesCountEl=$('#cyclesCount');
+    const masterVolEl=$('#masterVol');
+
+    const repeatDialog=$('#repeatDialog');
+    const repeatYes=$('#repeatYes');
+    const repeatNo=$('#repeatNo');
+
+    // Keep number inputs & ranges in sync
+    function bindRange(num,range){
+      num.addEventListener('input',()=>{ range.value=num.value; });
+      range.addEventListener('input',()=>{ num.value=range.value; updateInitialTime(); });
+    }
+    bindRange(focusMinutesEl, focusRange);
+    bindRange(breakMinutesEl, breakRange);
+
+    function fmt(sec){ const m=Math.floor(sec/60).toString().padStart(2,'0'); const s=Math.floor(sec%60).toString().padStart(2,'0'); return `${m}:${s}`; }
+
+    function speak(text){ if(!speakToggle.checked) return; try{ const u=new SpeechSynthesisUtterance(text); u.lang='de-DE'; speechSynthesis.cancel(); speechSynthesis.speak(u);}catch(e){} }
+
+    function setCycleInfo(){
+      const configured=Math.max(1,parseInt(cyclesCountEl.value||'1',10));
+      const total=(currentPhase==='idle')?configured:totalCycles;
+      if(total<=1) cycleInfoEl.textContent='Einzelzyklus'; else cycleInfoEl.textContent=`Zyklus ${currentCycle}/${total}`;
+    }
+
+    // ————————————————————————————————
+    // Audio Engine
+    // ————————————————————————————————
+    let ctx, masterGain;
+    function ensureAudio(){
+      if(!ctx){
+        ctx = new (window.AudioContext||window.webkitAudioContext)();
+        masterGain=ctx.createGain();
+        masterGain.gain.value=parseFloat(masterVolEl.value);
+        masterGain.connect(ctx.destination);
+      }
+      if(ctx.state==='suspended') ctx.resume();
+    }
+    masterVolEl.addEventListener('input',()=>{ if(masterGain) masterGain.gain.value=parseFloat(masterVolEl.value); });
+
+    function rampGain(g,value,time=0.7){ const now=ctx.currentTime; g.gain.cancelScheduledValues(now); g.gain.setValueAtTime(g.gain.value, now); g.gain.linearRampToValueAtTime(value, now+time); }
+    function createNoiseBuffer(seconds=2){ const rate=ctx.sampleRate; const b=ctx.createBuffer(1,seconds*rate,rate); const d=b.getChannelData(0); for(let i=0;i<d.length;i++){ d[i]=Math.random()*2-1; } return b; }
+
+    function makeRainNode(){ const src=ctx.createBufferSource(); src.buffer=createNoiseBuffer(2); src.loop=true; const bp=ctx.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=700; bp.Q.value=.6; const hp=ctx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=200; const delay=ctx.createDelay(1.0); delay.delayTime.value=.25; const feedback=ctx.createGain(); feedback.gain.value=.2; const wet=ctx.createGain(); wet.gain.value=.35; const out=ctx.createGain(); out.gain.value=.8; src.connect(bp); bp.connect(hp); hp.connect(out); hp.connect(delay); delay.connect(feedback); feedback.connect(delay); delay.connect(wet); wet.connect(out); return {start(){src.start();}, stop(){try{src.stop();}catch{}}, node:out}; }
+    function makeOceanNode(){ const src=ctx.createBufferSource(); src.buffer=createNoiseBuffer(2); src.loop=true; const lp=ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=800; const lfo=ctx.createOscillator(); lfo.type='sine'; lfo.frequency.value=.12; const lfoG=ctx.createGain(); lfoG.gain.value=350; const out=ctx.createGain(); out.gain.value=.8; lfo.connect(lfoG); lfoG.connect(lp.frequency); src.connect(lp); lp.connect(out); return {start(){src.start(); lfo.start();}, stop(){try{src.stop();}catch{} try{lfo.stop();}catch{}}, node:out}; }
+    function makeForestNode(){ const src=ctx.createBufferSource(); src.buffer=createNoiseBuffer(2); src.loop=true; const hp=ctx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=120; const lp=ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=1500; const lfo=ctx.createOscillator(); lfo.type='sine'; lfo.frequency.value=.07; const lfoG=ctx.createGain(); lfoG.gain.value=100; lfo.connect(lfoG); lfoG.connect(hp.frequency); const out=ctx.createGain(); out.gain.value=.75; src.connect(hp); hp.connect(lp); lp.connect(out); return {start(){src.start(); lfo.start();}, stop(){try{src.stop();}catch{} try{lfo.stop();}catch{}}, node:out}; }
+
+    function startNature(kind){ ensureAudio(); const maker={rain:makeRainNode,ocean:makeOceanNode,forest:makeForestNode,silence:()=>({start(){},stop(){},node:ctx.createGain()})}[kind]||makeRainNode; const unit=maker(); const g=ctx.createGain(); g.gain.value=0.0; unit.node.connect(g).connect(masterGain); unit.start(); if(duckingEl.value==='true') rampGain(g,1.0,1.0); else g.gain.value=1.0; return ()=>{ if(duckingEl.value==='true'){ rampGain(g,0.0,0.8); setTimeout(()=>{unit.stop(); g.disconnect();},850);} else { try{unit.stop();}catch{} g.disconnect(); } }; }
+    function makeAmbientPad(){ const out=ctx.createGain(); out.gain.value=.8; const notes=[220,277.18,329.63,440]; const oscs=notes.map((f,i)=>{ const o=ctx.createOscillator(); o.type='sine'; o.frequency.value=f; const g=ctx.createGain(); g.gain.value=0.15 - i*0.02; o.connect(g).connect(out); return o; }); const lfo=ctx.createOscillator(); lfo.type='sine'; lfo.frequency.value=.08; const lfoG=ctx.createGain(); lfoG.gain.value=.25; lfo.connect(lfoG); lfoG.connect(out.gain); return {start(){oscs.forEach(o=>o.start()); lfo.start();}, stop(){oscs.forEach(o=>{try{o.stop();}catch{}}); try{lfo.stop();}catch{}}, node:out}; }
+    function makeChimes(){ const out=ctx.createGain(); out.gain.value=.8; let id; function note(f,d=.9){ const o=ctx.createOscillator(); o.type='triangle'; o.frequency.value=f; const g=ctx.createGain(); g.gain.value=.0001; const lp=ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=3000; o.connect(lp).connect(g).connect(out); const now=ctx.currentTime; g.gain.setValueAtTime(.0001,now); g.gain.exponentialRampToValueAtTime(.35,now+.04); g.gain.exponentialRampToValueAtTime(.0001,now+d); o.start(); o.stop(now+d+.02);} return {start(){ const scale=[523.25,587.33,659.25,783.99,880.00]; let i=0; id=setInterval(()=>{ note(scale[i%scale.length]*(Math.random()<0.4?2:1)); i++; },1200); }, stop(){ if(id) clearInterval(id); }, node:out}; }
+    function startBreakSound(kind){ ensureAudio(); const maker={ambient:makeAmbientPad,chimes:makeChimes,ocean:makeOceanNode,silence:()=>({start(){},stop(){},node:ctx.createGain()})}[kind]||makeAmbientPad; const unit=maker(); const g=ctx.createGain(); g.gain.value=0.0; unit.node.connect(g).connect(masterGain); unit.start(); if(duckingEl.value==='true') rampGain(g,1.0,1.0); else g.gain.value=1.0; return ()=>{ if(duckingEl.value==='true'){ rampGain(g,0.0,0.8); setTimeout(()=>{unit.stop(); g.disconnect();},850);} else { try{unit.stop();}catch{} g.disconnect(); } }; }
+
+    // ————————————————————————————————
+    // Timer Logic
+    // ————————————————————————————————
+    let ticker=null; let remaining=0; let totalPhase=0; let currentPhase='idle'; let stopCurrentSound=null; let totalCycles=1, cyclesDone=0, currentCycle=0;
+
+    function updateRing(){ const CIRC=2*Math.PI*45; const done=(totalPhase>0? (1-remaining/totalPhase):0); ringEl.setAttribute('stroke-dasharray', CIRC.toFixed(1)); ringEl.setAttribute('stroke-dashoffset', (CIRC*(1-done)).toFixed(1)); }
+
+    function updateUI(){ timeEl.textContent=fmt(Math.max(0,remaining)); caption.textContent= currentPhase==='focus' ? 'Fokus!' : currentPhase==='break' ? 'Pause' : 'Bereit'; phaseTitle.textContent= currentPhase==='focus' ? 'Konzentrationsphase' : currentPhase==='break' ? 'Pausenphase' : 'Bereit'; pauseBtn.disabled=(currentPhase==='idle'); resetBtn.disabled=(currentPhase==='idle'); setCycleInfo(); updateRing(); }
+
+    function clearTicker(){ if(ticker){ clearInterval(ticker); ticker=null; } }
+
+    function startPhase(name, seconds){ currentPhase=name; remaining=seconds; totalPhase=seconds; updateUI(); clearTicker(); ticker=setInterval(()=>{ remaining-=1; updateUI(); if(remaining<=0){ clearTicker(); onPhaseEnd(); } },1000); }
+
+    function onPhaseEnd(){ if(stopCurrentSound){ stopCurrentSound(); stopCurrentSound=null; } if(currentPhase==='focus'){ speak('Nun beginnt deine Pause'); const brkSec=Math.max(1, parseInt(breakMinutesEl.value,10)||5)*60; stopCurrentSound=startBreakSound(breakSoundEl.value); startPhase('break', brkSec); } else if(currentPhase==='break'){ cyclesDone+=1; if(cyclesDone<totalCycles){ speak('Die nächste Konzentrationsphase beginnt!'); startCycle(); } else { const ask=()=>{ repeatDialog.showModal(); }; speak('Der Zyklus ist beendet, möchtest du einen weiteren starten?'); setTimeout(ask, 250); currentPhase='idle'; updateUI(); startBtn.disabled=false; pauseBtn.disabled=true; } } }
+
+    function startCycle(){ ensureAudio(); clearTicker(); if(stopCurrentSound){ stopCurrentSound(); stopCurrentSound=null; } currentCycle=cyclesDone+1; const focSec=Math.max(1, parseInt(focusMinutesEl.value,10)||25)*60; stopCurrentSound=startNature(focusSoundEl.value); startPhase('focus', focSec); startBtn.disabled=true; pauseBtn.disabled=false; resetBtn.disabled=false; }
+
+    function startRun(){ totalCycles=Math.max(1, parseInt(cyclesCountEl.value,10) || 1); cyclesDone=0; currentCycle=0; startCycle(); }
+
+    function resume(){ if(ctx && ctx.state==='suspended'){ ctx.resume(); } }
+
+    // ————————————————————————————————
+    // Events
+    // ————————————————————————————————
+    startBtn.addEventListener('click', ()=> startRun());
+
+    pauseBtn.addEventListener('click', ()=>{
+      if(!ctx) return;
+      if(ctx.state==='running'){
+        ctx.suspend(); clearTicker(); pauseBtn.textContent='Fortsetzen';
+      } else {
+        ctx.resume(); clearTicker(); ticker=setInterval(()=>{ remaining-=1; updateUI(); if(remaining<=0){ clearTicker(); onPhaseEnd(); } },1000); pauseBtn.textContent='Pausieren';
+      }
+    });
+
+    resetBtn.addEventListener('click', ()=>{
+      clearTicker(); if(stopCurrentSound){ stopCurrentSound(); stopCurrentSound=null; }
+      currentPhase='idle'; remaining=parseInt(focusMinutesEl.value,10)*60 || 1500; totalPhase=remaining; totalCycles=Math.max(1, parseInt(cyclesCountEl.value,10) || 1); cyclesDone=0; currentCycle=0; updateUI(); startBtn.disabled=false; pauseBtn.disabled=true; pauseBtn.textContent='Pausieren'; resetBtn.disabled=true; if(ctx && ctx.state==='suspended') ctx.resume();
+    });
+
+    repeatYes && repeatYes.addEventListener('click', ()=>{ repeatDialog.close(); speak('Die nächste Konzentrationsphase beginnt!'); setTimeout(()=> startRun(), 300); });
+    repeatNo && repeatNo.addEventListener('click', ()=> repeatDialog.close());
+
+    // Test buttons
+    const t1=$('#test1'), t2=$('#test2');
+    if(t1){ t1.addEventListener('click', ()=>{ focusMinutesEl.value=0.1; focusRange.value=0.1; breakMinutesEl.value=0.05; breakRange.value=0.05; cyclesCountEl.value=2; updateInitialTime(); startRun(); }); }
+    if(t2){ t2.addEventListener('click', ()=>{ focusMinutesEl.value=0.2; focusRange.value=0.2; breakMinutesEl.value=0.1; breakRange.value=0.1; cyclesCountEl.value=3; updateInitialTime(); startRun(); }); }
+
+    function updateInitialTime(){ remaining=parseFloat(focusMinutesEl.value)*60; totalPhase=remaining; updateUI(); }
+
+    // Initial UI
+    updateInitialTime();
+  </script>
+</body>
+</html>
