@@ -62,8 +62,7 @@
           ducking:{true:'Aktiv', false:'Deaktiviert'},
           theme:{dark:'Dunkel', light:'Hell'},
           lang:{de:'Deutsch', en:'English'}
-        }
-    },
+        }},
     en:{title:'Pomodoro Focus Timer', start:'Start cycle', pause:'Pause', resume:'Resume', reset:'Reset',
         speak:'Voice announcements', focusMin:'Focus duration (min)', breakMin:'Break duration (min)', longBreak:'Long break (min, every 4 cycles)',
         focusSound:'Nature sound – Focus', breakSound:'Sound – Break', endSignal:'End-of-phase signal', ducking:'Smooth fade in/out', cycles:'Number of cycles', volume:'Master volume',
@@ -83,8 +82,7 @@
           ducking:{true:'Enabled', false:'Disabled'},
           theme:{dark:'Dark', light:'Light'},
           lang:{de:'Deutsch', en:'English'}
-        }
-    }
+        }}
   };
 
   // ---------- Timer/Audio state ----------
@@ -115,53 +113,14 @@
     setCycleInfo(); updateRing();
   }
 
-  // ---------- i18n apply ----------
-  function rebuildSelectOptions(selectEl, map){
-    if(!selectEl || !map) return;
-    const current = selectEl.value;
-    const order = Array.from(selectEl.options).map(o => (o.value ?? '').toString());
-    const frag = document.createDocumentFragment();
-    (order.length?order:Object.keys(map)).forEach(val=>{
-      if(map[val]===undefined) return;
-      const opt=document.createElement('option');
-      opt.value=val; opt.text=map[val]; opt.label=map[val];
-      if(val===current) opt.selected=true;
-      frag.appendChild(opt);
-    });
-    selectEl.innerHTML=''; selectEl.appendChild(frag);
-    if(current) selectEl.value=current;
-  }
-
-  function applyLang(){
-    const t=i18n[LANG];
-    document.documentElement.lang = (LANG==='de'?'de':'en');
-    document.title = t.title;
-    const md=document.querySelector('meta[name="description"]'); if(md) md.setAttribute('content', t.metaDesc);
-
-    const setText=(sel,val,html=false)=>{ const el=$(sel); if(!el) return; html? el.innerHTML=val : el.textContent=val; };
-    setText('#title', t.title); setText('#labelLanguage', t.langLabel); setText('#labelTheme', t.themeLabel);
-    if(phaseTitle) phaseTitle.textContent = currentPhase==='focus'?t.focus : currentPhase==='break'?t.break : t.ready;
-    if(caption) caption.textContent = currentPhase==='focus'?t.focusCap : currentPhase==='break'?t.breakCap : t.ready;
-    if(startBtn) startBtn.textContent=t.start; if(resetBtn) resetBtn.textContent=t.reset; setPauseButtonState();
-
-    setText('#labelSpeak', t.speak); setText('#labelFocusMin', t.focusMin); setText('#labelBreakMin', t.breakMin);
-    setText('#labelLongBreak', t.longBreak); setText('#labelFocusSound', t.focusSound); setText('#labelBreakSound', t.breakSound);
-    setText('#labelEndSignal', t.endSignal); setText('#labelDucking', t.ducking); setText('#labelCycles', t.cycles); setText('#labelVol', t.volume);
-
-    setText('#testsSummary', t.testsSummary); setText('#testsHint', t.testsHint); setText('#footerNote', t.footer, true);
-    setText('#modalTitle', t.modalTitle); setText('#modalQuestion', t.modalQuestion);
-    if (repeatYes) repeatYes.textContent=t.yes; if (repeatNo) repeatNo.textContent=t.no;
-    setText('#infoTitle', t.descTitle); setText('#pomDesc', t.descText);
-    setText('#navImprint', t.navImprint); setText('#navPrivacy', t.navPrivacy);
-
-    rebuildSelectOptions(focusSoundEl, t.opt.focusSound);
-    rebuildSelectOptions(breakSoundEl, t.opt.breakSound);
-    rebuildSelectOptions(endSignalEl, t.opt.endSignal);
-    rebuildSelectOptions(duckingEl, t.opt.ducking);
-    rebuildSelectOptions(themeSel, t.opt.theme);
-    rebuildSelectOptions(langSel, t.opt.lang);
-
-    setCycleInfo();
+  // ---------- Sound fade helpers ----------
+  function rampGain(g,value,time=0.7){ const now=ctx.currentTime; g.gain.cancelScheduledValues(now); g.gain.setValueAtTime(g.gain.value, now); g.gain.linearRampToValueAtTime(value, now+time); }
+  function rampSound(g, to = 1, dur = 0.8) { if (duckingEl && duckingEl.value === 'true') rampGain(g, to, dur); else g.gain.value = to; }
+  function stopSound(unit, g) {
+    if (duckingEl && duckingEl.value === 'true') {
+      rampGain(g, 0.0, 0.8);
+      setTimeout(() => { try{unit.stop();}catch{} try{g.disconnect();}catch{} }, 850);
+    } else { try{unit.stop();}catch{} try{g.disconnect();}catch{} }
   }
 
   // ---------- Number <-> Range sync ----------
@@ -185,158 +144,100 @@
   }
   masterVolEl && masterVolEl.addEventListener('input',()=>{ if(masterGain) masterGain.gain.value=parseFloat(masterVolEl.value || '0.6'); });
 
-  function rampGain(g,value,time=0.7){ const now=ctx.currentTime; g.gain.cancelScheduledValues(now); g.gain.setValueAtTime(g.gain.value, now); g.gain.linearRampToValueAtTime(value, now+time); }
-  function createNoiseBuffer(seconds=2){ const rate=ctx.sampleRate; const b=ctx.createBuffer(1,seconds*rate,rate); const d=b.getChannelData(0); for(let i=0;i<d.length;i++){ d[i]=Math.random()*2-1; } return b; }
-
-// ===== File Loop Engine (Crossfade) =====
-
-// Wählt bevorzugtes Format pro Browser
-const PREFERRED_AUDIO_EXT = (() => {
-  const a = document.createElement('audio');
-  if (a.canPlayType('audio/ogg; codecs="vorbis"')) return 'ogg';
-  return 'mp3';
-})();
-
-// Buffer-Cache, damit Dateien nur 1x dekodiert werden
-const _bufferCache = new Map();
-
-async function loadAudioBuffer(urlBase){
-  ensureAudio();
-  const url = `${urlBase}.${PREFERRED_AUDIO_EXT}`;
-  const key = url;
-  if (_bufferCache.has(key)) return _bufferCache.get(key);
-  const res = await fetch(url);
-  const ab = await res.arrayBuffer();
-  const buf = await ctx.decodeAudioData(ab);
-  _bufferCache.set(key, buf);
-  return buf;
-}
-
-/**
- * Erzeugt einen Player, der eine Audio-Datei als Loop mit Crossfade abspielt.
- * @param {string} urlBase  z.B. 'assets/audio/rain' (ohne .mp3/.ogg)
- * @param {number} fadeSec  Dauer des Crossfades (0.6–1.2s fühlt sich gut an)
- */
-function makeFileLoop(urlBase, fadeSec = 0.9){
-  ensureAudio();
-
-  const out = ctx.createGain();
-  out.gain.value = 1.0;
-
-  let stopped = false;
-  let pending = false; // verhindert doppeltes Starten
-
-  // Startet einen Puffer, gibt {src, g} zurück
-  function playOnce(buffer){
-    const src = ctx.createBufferSource();
-    src.buffer = buffer;
-    src.loop = false;
-
-    const g = ctx.createGain();
-    g.gain.value = 0.0;
-
-    src.connect(g).connect(out);
-
-    const now = ctx.currentTime;
-    src.start(now);
-
-    // Einfaden
-    g.gain.setValueAtTime(0.0, now);
-    g.gain.linearRampToValueAtTime(1.0, now + fadeSec);
-
-    return { src, g, startTime: now, duration: buffer.duration };
+  // ===== File Loop Engine (Crossfade) =====
+  const PREFERRED_AUDIO_EXT = (() => {
+    const a = document.createElement('audio');
+    if (a.canPlayType('audio/ogg; codecs="vorbis"')) return 'ogg';
+    return 'mp3';
+  })();
+  const _bufferCache = new Map();
+  async function loadAudioBuffer(urlBase){
+    ensureAudio();
+    const url = `${urlBase}.${PREFERRED_AUDIO_EXT}`;
+    if (_bufferCache.has(url)) return _bufferCache.get(url);
+    const res = await fetch(url);
+    const ab = await res.arrayBuffer();
+    const buf = await ctx.decodeAudioData(ab);
+    _bufferCache.set(url, buf);
+    return buf;
   }
-
-  async function run(){
-    if (pending) return;
-    pending = true;
-
-    const buffer = await loadAudioBuffer(urlBase);
-    if (stopped) return;
-
-    // Erste Instanz
-    let cur = playOnce(buffer);
-
-    // Scheduler-Schleife: kurz vor Ende den nächsten Starten und crossfaden
-    async function scheduleNext(){
-      if (stopped) return;
-
-      const beforeEnd = Math.max(0.1, cur.duration - fadeSec);
-      const target = cur.startTime + beforeEnd;
-      const delayMs = Math.max(0, (target - ctx.currentTime) * 1000);
-
-      setTimeout(async () => {
-        if (stopped) return;
-
-        // Nächsten Player erstellen
-        const next = playOnce(buffer);
-
-        // Aktuelle Instanz ausfaden
-        const n = ctx.currentTime;
-        cur.g.gain.setValueAtTime(cur.g.gain.value, n);
-        cur.g.gain.linearRampToValueAtTime(0.0, n + fadeSec);
-
-        // Die alte Quelle stoppt automatisch am Ende; wir übernehmen den Pointer
-        cur = next;
-
-        // Weiter planen
-        scheduleNext();
-      }, delayMs);
+  function makeFileLoop(urlBase, fadeSec = 0.9){
+    ensureAudio();
+    const out = ctx.createGain(); out.gain.value = 1.0;
+    let stopped = false, pending = false;
+    function playOnce(buffer){
+      const src = ctx.createBufferSource(); src.buffer = buffer; src.loop = false;
+      const g = ctx.createGain(); g.gain.value = 0.0;
+      src.connect(g).connect(out);
+      const now = ctx.currentTime;
+      src.start(now);
+      g.gain.setValueAtTime(0.0, now);
+      g.gain.linearRampToValueAtTime(1.0, now + fadeSec);
+      return { src, g, startTime: now, duration: buffer.duration };
     }
-    scheduleNext();
+    async function run(){
+      if (pending) return; pending = true;
+      const buffer = await loadAudioBuffer(urlBase);
+      if (stopped) return;
+      let cur = playOnce(buffer);
+      (function scheduleNext(){
+        if (stopped) return;
+        const beforeEnd = Math.max(0.1, cur.duration - fadeSec);
+        const target = cur.startTime + beforeEnd;
+        const delayMs = Math.max(0, (target - ctx.currentTime) * 1000);
+        setTimeout(() => {
+          if (stopped) return;
+          const next = playOnce(buffer);
+          const n = ctx.currentTime;
+          cur.g.gain.setValueAtTime(cur.g.gain.value, n);
+          cur.g.gain.linearRampToValueAtTime(0.0, n + fadeSec);
+          cur = next;
+          scheduleNext();
+        }, delayMs);
+      })();
+    }
+    return { start(){ stopped=false; run().catch(()=>{}); }, stop(){ stopped=true; try{out.disconnect();}catch{} }, node: out };
   }
 
-  return {
-    start(){ stopped = false; run().catch(()=>{}); },
-    stop(){
-      stopped = true;
-      try { out.disconnect(); } catch {}
-    },
-    node: out
-  };
-}
-
-  
-  // Nature generators
   // ===== Nature generators (File-based) =====
-function makeRainNode(){    return makeFileLoop('assets/audio/rain',     0.9); }
-function makeOceanNode(){   return makeFileLoop('assets/audio/ocean',    0.9); }
-function makeForestNode(){  return makeFileLoop('assets/audio/forest',   0.9); }
-function makeStreamNode(){  return makeFileLoop('assets/audio/forest',   0.9); } // Falls du einen eigenen "stream" hast, nenne die Datei "stream"
-function makeFireNode(){    return makeFileLoop('assets/audio/fire',     0.7); }
-function makeCricketsNode(){return makeFileLoop('assets/audio/crickets', 0.6); }
-function makeBrownNoiseNode(){return makeFileLoop('assets/audio/brown',  0.5); }
+  function makeRainNode(){    return makeFileLoop('assets/audio/rain',     0.9); }
+  function makeOceanNode(){   return makeFileLoop('assets/audio/ocean',    0.9); }
+  function makeForestNode(){  return makeFileLoop('assets/audio/forest',   0.9); }
+  function makeStreamNode(){  return makeFileLoop('assets/audio/stream',   0.9); } // lege stream.ogg/mp3 an oder mappe auf forest
+  function makeFireNode(){    return makeFileLoop('assets/audio/fire',     0.7); }
+  function makeCricketsNode(){return makeFileLoop('assets/audio/crickets', 0.6); }
+  function makeBrownNoiseNode(){return makeFileLoop('assets/audio/brown',  0.5); }
 
-// ===== Break sounds (File-based) =====
-function makeAmbientPad(){  return makeFileLoop('assets/audio/ambient',  0.9); }
-function makeChimes(){      return makeFileLoop('assets/audio/chimes',   0.7); }
-function makeSoftBells(){   return makeFileLoop('assets/audio/softbells',0.7); }
+  // ===== Break sounds (File-based) =====
+  function makeAmbientPad(){  return makeFileLoop('assets/audio/ambient',  0.9); }
+  function makeChimes(){      return makeFileLoop('assets/audio/chimes',   0.7); }
+  function makeSoftBells(){   return makeFileLoop('assets/audio/softbells',0.7); }
 
-
+  // Start/Stop Wrapper
   function startNature(kind){
     ensureAudio();
-    const maker={
-      rain:makeRainNode,ocean:makeOceanNode,forest:makeForestNode,stream:makeStreamNode,fire:makeFireNode,crickets:makeCricketsNode,brown:makeBrownNoiseNode,
-      silence:()=>({start(){},stop(){},node:ctx.createGain()})
+    const maker = {
+      rain: makeRainNode, ocean: makeOceanNode, forest: makeForestNode, stream: makeStreamNode,
+      fire: makeFireNode, crickets: makeCricketsNode, brown: makeBrownNoiseNode,
+      silence: () => ({ start(){}, stop(){}, node: ctx.createGain() })
     }[kind] || makeRainNode;
-    const unit=maker(); const g=ctx.createGain(); g.gain.value=0.0; unit.node.connect(g).connect(masterGain);
-    unit.start(); rampSound(g,1.0,1.0);
-    return ()=>stopSound(unit,g);
+    const unit = maker(); const g = ctx.createGain(); g.gain.value = 0.0;
+    unit.node.connect(g).connect(masterGain);
+    unit.start(); rampSound(g, 1.0, 1.0);
+    return () => stopSound(unit, g);
   }
-
-  function makeAmbientPad(){ const out=ctx.createGain(); out.gain.value=.8; const notes=[220,277.18,329.63,440]; const oscs=notes.map((f,i)=>{ const o=ctx.createOscillator(); o.type='sine'; o.frequency.value=f; const g=ctx.createGain(); g.gain.value=0.15 - i*0.02; o.connect(g).connect(out); return o; }); const lfo=ctx.createOscillator(); lfo.type='sine'; lfo.frequency.value=.08; const lfoG=ctx.createGain(); lfoG.gain.value=.25; lfo.connect(lfoG); lfoG.connect(out.gain); return {start(){oscs.forEach(o=>o.start()); lfo.start();}, stop(){oscs.forEach(o=>{try{o.stop();}catch{}}); try{lfo.stop();}catch{}}, node:out}; }
-  function makeChimes(){ const out=ctx.createGain(); out.gain.value=.8; let id; function note(f,d=.9){ const o=ctx.createOscillator(); o.type='triangle'; o.frequency.value=f; const g=ctx.createGain(); g.gain.value=.0001; const lp=ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=3000; o.connect(lp).connect(g).connect(out); const now=ctx.currentTime; g.gain.setValueAtTime(.0001,now); g.gain.exponentialRampToValueAtTime(.35,now+.04); g.gain.exponentialRampToValueAtTime(.0001,now+d); o.start(); o.stop(now+d+.02);} return {start(){ const scale=[523.25,587.33,659.25,783.99,880.00]; let i=0; id=setInterval(()=>{ note(scale[i%scale.length]*(Math.random()<0.4?2:1)); i++; },1200); }, stop(){ if(id) clearInterval(id); }, node:out}; }
-  function makeSoftBells(){ const out=ctx.createGain(); out.gain.value=.7; let id; function bell(){ const f=440*Math.pow(2, Math.floor(Math.random()*5)/12); const o=ctx.createOscillator(); o.type='sine'; const g=ctx.createGain(); g.gain.value=0.0001; o.connect(g).connect(out); const now=ctx.currentTime; g.gain.setValueAtTime(0.0001, now); g.gain.exponentialRampToValueAtTime(0.25, now+0.03); g.gain.exponentialRampToValueAtTime(0.0001, now+1.2); o.start(now); o.stop(now+1.3);} return {start(){ id=setInterval(bell, 1400); }, stop(){ if(id) clearInterval(id); }, node:out}; }
-
   function startBreakSound(kind){
     ensureAudio();
-    const maker={ambient:makeAmbientPad,chimes:makeChimes,softbells:makeSoftBells,ocean:makeOceanNode,silence:()=>({start(){},stop(){},node:ctx.createGain()})}[kind]||makeAmbientPad;
-    const unit=maker(); const g=ctx.createGain(); g.gain.value=0.0; unit.node.connect(g).connect(masterGain);
-    unit.start(); rampSound(g,1.0,1.0);
-    return ()=>stopSound(unit,g);
+    const maker = { ambient: makeAmbientPad, chimes: makeChimes, softbells: makeSoftBells, ocean: makeOceanNode,
+      silence: () => ({ start(){}, stop(){}, node: ctx.createGain() })
+    }[kind] || makeAmbientPad;
+    const unit = maker(); const g = ctx.createGain(); g.gain.value = 0.0;
+    unit.node.connect(g).connect(masterGain);
+    unit.start(); rampSound(g, 1.0, 1.0);
+    return () => stopSound(unit, g);
   }
 
-  // End-of-phase chime
+  // End-of-phase chime (Synth beibehalten)
   function playChime(kind){
     ensureAudio(); if(kind==='none') return;
     const out=ctx.createGain(); out.gain.value=0.0; out.connect(masterGain); const now=ctx.currentTime;
@@ -424,14 +325,55 @@ function makeSoftBells(){   return makeFileLoop('assets/audio/softbells',0.7); }
 
   function updateInitialTime(){ remaining=parseFloat(focusMinutesEl?.value ?? 25)*60; totalPhase=remaining; updateUI(); }
 
-  // Lang & Theme
+  // ---------- i18n apply ----------
+  function rebuildSelectOptions(selectEl, map){
+    if(!selectEl || !map) return;
+    const current = selectEl.value;
+    const order = Array.from(selectEl.options).map(o => (o.value ?? '').toString());
+    const frag = document.createDocumentFragment();
+    (order.length?order:Object.keys(map)).forEach(val=>{
+      if(map[val]===undefined) return;
+      const opt=document.createElement('option');
+      opt.value=val; opt.text=map[val]; opt.label=map[val];
+      if(val===current) opt.selected=true;
+      frag.appendChild(opt);
+    });
+    selectEl.innerHTML=''; selectEl.appendChild(frag);
+    if(current) selectEl.value=current;
+  }
+  function applyLang(){
+    const t=i18n[LANG];
+    document.documentElement.lang = (LANG==='de'?'de':'en');
+    document.title = t.title;
+    const md=document.querySelector('meta[name="description"]'); if(md) md.setAttribute('content', t.metaDesc);
+    const setText=(sel,val,html=false)=>{ const el=$(sel); if(!el) return; html? el.innerHTML=val : el.textContent=val; };
+    setText('#title', t.title); setText('#labelLanguage', t.langLabel); setText('#labelTheme', t.themeLabel);
+    if(phaseTitle) phaseTitle.textContent = currentPhase==='focus'?t.focus : currentPhase==='break'?t.break : t.ready;
+    if(caption) caption.textContent = currentPhase==='focus'?t.focusCap : currentPhase==='break'?t.breakCap : t.ready;
+    if(startBtn) startBtn.textContent=t.start; if(resetBtn) resetBtn.textContent=t.reset; setPauseButtonState();
+    setText('#labelSpeak', t.speak); setText('#labelFocusMin', t.focusMin); setText('#labelBreakMin', t.breakMin);
+    setText('#labelLongBreak', t.longBreak); setText('#labelFocusSound', t.focusSound); setText('#labelBreakSound', t.breakSound);
+    setText('#labelEndSignal', t.endSignal); setText('#labelDucking', t.ducking); setText('#labelCycles', t.cycles); setText('#labelVol', t.volume);
+    setText('#testsSummary', t.testsSummary); setText('#testsHint', t.testsHint); setText('#footerNote', t.footer, true);
+    setText('#modalTitle', t.modalTitle); setText('#modalQuestion', t.modalQuestion);
+    if (repeatYes) repeatYes.textContent=t.yes; if (repeatNo) repeatNo.textContent=t.no;
+    setText('#infoTitle', t.descTitle); setText('#pomDesc', t.descText);
+    setText('#navImprint', t.navImprint); setText('#navPrivacy', t.navPrivacy);
+    rebuildSelectOptions(focusSoundEl, t.opt.focusSound);
+    rebuildSelectOptions(breakSoundEl, t.opt.breakSound);
+    rebuildSelectOptions(endSignalEl, t.opt.endSignal);
+    rebuildSelectOptions(duckingEl, t.opt.ducking);
+    rebuildSelectOptions(themeSel, t.opt.theme);
+    rebuildSelectOptions(langSel, t.opt.lang);
+    setCycleInfo();
+  }
+
+  // ---------- Init ----------
   if (langSel) {
     langSel.value = LANG;
     langSel.addEventListener('change', (e)=>{ LANG = e.target.value; setLang(LANG); applyLang(); });
   }
-  themeSel && themeSel.addEventListener('change', ()=>{ const v=themeSel.value; document.body.classList.toggle('light', v==='light'); });
-
-  // ---------- Init ----------
+  themeSel && themeSel.addEventListener('change', ()=>{ document.body.classList.toggle('light', themeSel.value==='light'); });
   applyLang();
   updateInitialTime();
 })();
