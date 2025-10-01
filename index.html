@@ -4,6 +4,10 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Pomodoro Naturklang Timer – Pro</title>
+  <meta name="description" content="Produktiv arbeiten mit dem Pomodoro-Prinzip: 25 Minuten Fokus, 5 Minuten Pause.">
+  <link rel="icon" href="favicon.ico">
+
+  <!-- Original Styles (belassen, damit das bestehende Design 1:1 funktioniert) -->
   <style>
     :root{
       --bg:#0b1220;--panel:#121926;--panel2:#0e1624;--muted:#94a2be;--text:#eef2ff;--accent:#6aa6ff;--accent2:#8ef0c9;--ring1:#ffb347;--ring2:#ff6a6a;--ok:#37c172;--warn:#ff6a8e;
@@ -65,6 +69,15 @@
     details.dev{margin-top:4px}
     details.dev summary{cursor:pointer;color:#bcd3ff}
     body.light details.dev summary{color:#345}
+
+    /* Dezent platzierte Beschreibung */
+    .info-note{max-width:1100px;margin:12px auto 0;padding:0 20px;color:var(--muted)}
+    .info-note details{background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.03));border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:10px 12px}
+    body.light .info-note details{background:#f6f8ff;border:1px solid rgba(7,17,45,.08)}
+    .info-note summary{cursor:pointer;font-weight:600;color:var(--text)}
+    .legal{display:flex;gap:.5rem;align-items:center;justify-content:center;margin-top:6px}
+    .legal a{color:#8ef0c9;text-decoration:none}
+    .legal a:hover{text-decoration:underline}
   </style>
 </head>
 <body>
@@ -207,7 +220,23 @@
       </aside>
     </div>
 
+    <!-- Dezent platzierter Beschreibungstext -->
+    <aside class="info-note" aria-labelledby="infoTitle">
+      <details>
+        <summary id="infoTitle">Was ist das Pomodoro-Prinzip?</summary>
+        <p id="pomDesc">
+          Mit dem Pomodoro-Prinzip steigerst du deine Produktivität in kleinen, konzentrierten
+          Einheiten. Du arbeitest 25 Minuten fokussiert und machst dann 5 Minuten Pause.
+          Nach vier Runden gibt’s eine längere Pause – so bleibst du frisch und effektiv.
+        </p>
+      </details>
+    </aside>
+
     <p class="footer" id="footerNote">Hinweis: Diese Seite nutzt die <em>Web Audio API</em> und die <em>Sprachausgabe</em> des Browsers. Auf Mobilgeräten muss die Audiowiedergabe mit einem Button gestartet werden (erledigt durch „Zyklus starten“).</p>
+    <nav class="legal">
+      <a href="impressum.html" id="navImprint">Impressum</a><span>·</span>
+      <a href="datenschutz.html" id="navPrivacy">Datenschutz</a>
+    </nav>
   </div>
 
   <!-- End Cycle Modal -->
@@ -268,7 +297,17 @@
           ready:'Bereit', focus:'Konzentrationsphase', break:'Pausenphase', focusCap:'Fokus!', breakCap:'Pause',
           langLabel:'Sprache', themeLabel:'Theme', dark:'Dunkel', light:'Hell',
           modalTitle:'Der Zyklus ist beendet', modalQuestion:'Möchtest du einen weiteren starten?', yes:'Ja, weiter', no:'Nein, stoppen',
-          speech:{start_break:'Nun beginnt deine Pause', long_break:'Nun beginnt deine lange Pause', next_focus:'Die nächste Konzentrationsphase beginnt!', cycle_end:'Der Zyklus ist beendet, möchtest du einen weiteren starten?'}
+          descTitle:'Was ist das Pomodoro-Prinzip?', descText:'Mit dem Pomodoro-Prinzip steigerst du deine Produktivität in kleinen, konzentrierten Einheiten. Du arbeitest 25 Minuten fokussiert und machst dann 5 Minuten Pause. Nach vier Runden gibt’s eine längere Pause – so bleibst du frisch und effektiv.',
+          navImprint:'Impressum', navPrivacy:'Datenschutz',
+          speech:{start_break:'Nun beginnt deine Pause', long_break:'Nun beginnt deine lange Pause', next_focus:'Die nächste Konzentrationsphase beginnt!', cycle_end:'Der Zyklus ist beendet, möchtest du einen weiteren starten?'},
+          opt:{
+            focusSound:{rain:'Regen', ocean:'Meeresrauschen', forest:'Wald / Wind', stream:'Bachlauf', fire:'Kaminfeuer', crickets:'Grillen', brown:'Brown Noise', silence:'Stille'},
+            breakSound:{ambient:'Ambient Pad', chimes:'Leises Glockenspiel', softbells:'Weiche Bells', ocean:'Meeresrauschen', silence:'Stille'},
+            endSignal:{none:'Keins', gong:'Gong', bowl:'Klangschale'},
+            ducking:{true:'Aktiv', false:'Deaktiviert'},
+            theme:{dark:'Dunkel', light:'Hell'},
+            lang:{de:'Deutsch', en:'English'}
+          }
       },
       en:{title:'Pomodoro Focus Timer', start:'Start cycle', pause:'Pause', resume:'Resume', reset:'Reset',
           speak:'Voice announcements', focusMin:'Focus duration (min)', breakMin:'Break duration (min)', longBreak:'Long break (min, every 4 cycles)',
@@ -278,19 +317,34 @@
           ready:'Ready', focus:'Focus session', break:'Break session', focusCap:'Focus!', breakCap:'Break',
           langLabel:'Language', themeLabel:'Theme', dark:'Dark', light:'Light',
           modalTitle:'Cycle finished', modalQuestion:'Do you want to start another one?', yes:'Yes', no:'No',
-          speech:{start_break:'Your break starts now', long_break:'Your long break starts now', next_focus:'The next focus session is starting!', cycle_end:'The cycle has finished. Do you want to start another one?'}
+          descTitle:'What is the Pomodoro Technique?', descText:'The Pomodoro Technique boosts productivity by working in short, focused bursts. Work for 25 minutes, then take a 5-minute break. After four rounds, take a longer break to stay fresh and effective.',
+          navImprint:'Imprint', navPrivacy:'Privacy',
+          speech:{start_break:'Your break starts now', long_break:'Your long break starts now', next_focus:'The next focus session is starting!', cycle_end:'The cycle has finished. Do you want to start another one?'},
+          opt:{
+            focusSound:{rain:'Rain', ocean:'Ocean waves', forest:'Forest / Wind', stream:'Stream', fire:'Fireplace', crickets:'Crickets', brown:'Brown noise', silence:'Silence'},
+            breakSound:{ambient:'Ambient pad', chimes:'Soft chimes', softbells:'Soft bells', ocean:'Ocean waves', silence:'Silence'},
+            endSignal:{none:'None', gong:'Gong', bowl:'Singing bowl'},
+            ducking:{true:'Enabled', false:'Disabled'},
+            theme:{dark:'Dark', light:'Light'},
+            lang:{de:'Deutsch', en:'English'}
+          }
       }
     };
 
     function applyLang(){
       const t=i18n[LANG];
-      document.documentElement.lang=LANG==='de'?'de':'en';
+      document.documentElement.lang = (LANG==='de'?'de':'en');
+      document.title = t.title;
+
+      // Kopf/Labels/Buttons
       $('#title').textContent=t.title;
       $('#labelLanguage').textContent=t.langLabel;
       $('#labelTheme').textContent=t.themeLabel;
       $('#phaseTitle').textContent = currentPhase==='focus'?t.focus : currentPhase==='break'?t.break : t.ready;
       caption.textContent = currentPhase==='focus'?t.focusCap : currentPhase==='break'?t.breakCap : t.ready;
-      startBtn.textContent=t.start; resetBtn.textContent=t.reset; pauseBtn.textContent=(ctx && ctx.state==='running')?t.pause:t.pause;
+      startBtn.textContent=t.start; resetBtn.textContent=t.reset; setPauseButtonState();
+
+      // Panel-Labels
       $('#labelSpeak').textContent=t.speak;
       $('#labelFocusMin').textContent=t.focusMin;
       $('#labelBreakMin').textContent=t.breakMin;
@@ -301,13 +355,47 @@
       $('#labelDucking').textContent=t.ducking;
       $('#labelCycles').textContent=t.cycles;
       $('#labelVol').textContent=t.volume;
+
+      // Dev/Test & Footer
       $('#testsSummary').textContent=t.testsSummary;
       $('#testsHint').textContent=t.testsHint;
       $('#footerNote').innerHTML=t.footer;
+
+      // Modal
       $('#modalTitle').textContent=t.modalTitle;
       $('#modalQuestion').textContent=t.modalQuestion;
       repeatYes.textContent=t.yes; repeatNo.textContent=t.no;
+
+      // Beschreibung (dezent)
+      $('#infoTitle').textContent = t.descTitle;
+      $('#pomDesc').textContent = t.descText;
+
+      // Footer-Navigation
+      $('#navImprint').textContent = t.navImprint;
+      $('#navPrivacy').textContent = t.navPrivacy;
+
+      // 1) Select-Optionen: Focus-Sound
+      updateOptions(focusSoundEl, t.opt.focusSound);
+      // 2) Select-Optionen: Break-Sound
+      updateOptions(breakSoundEl, t.opt.breakSound);
+      // 3) Select-Optionen: End-Signal
+      updateOptions(endSignalEl, t.opt.endSignal);
+      // 4) Select-Optionen: Ducking
+      updateOptions(duckingEl, t.opt.ducking);
+      // 5) Select-Optionen: Theme
+      updateOptions(themeSel, t.opt.theme);
+      // 6) Select-Optionen: Language (angezeigte Labels)
+      updateOptions(langSel, t.opt.lang);
+
       setCycleInfo();
+    }
+
+    function updateOptions(selectEl, map){
+      if(!selectEl || !map) return;
+      [...selectEl.options].forEach(opt=>{
+        const val = (opt.value ?? '').toString();
+        if(map[val]!==undefined){ opt.textContent = map[val]; }
+      });
     }
 
     function setPauseButtonState(){ pauseBtn.textContent = (ctx && ctx.state==='running') ? i18n[LANG].pause : i18n[LANG].resume; }
@@ -331,7 +419,7 @@
     }
 
     // ————————————————————————————————
-    // Audio Engine
+    // Audio Engine (wie im Original)
     // ————————————————————————————————
     let ctx, masterGain;
     function ensureAudio(){
@@ -367,7 +455,7 @@
     function startBreakSound(kind){ ensureAudio(); const maker={ambient:makeAmbientPad,chimes:makeChimes,softbells:makeSoftBells,ocean:makeOceanNode,silence:()=>({start(){},stop(){},node:ctx.createGain()})}[kind]||makeAmbientPad; const unit=maker(); const g=ctx.createGain(); g.gain.value=0.0; unit.node.connect(g).connect(masterGain); unit.start(); if(duckingEl.value==='true') rampGain(g,1.0,1.0); else g.gain.value=1.0; return ()=>{ if(duckingEl.value==='true'){ rampGain(g,0.0,0.8); setTimeout(()=>{unit.stop(); g.disconnect();},850);} else { try{unit.stop();}catch{} g.disconnect(); } }; }
 
     // End-of-phase chimes
-    function playChime(kind){ ensureAudio(); if(kind==='none') return; const out=ctx.createGain(); out.gain.value=0.0; out.connect(masterGain); const now=ctx.currentTime; const envDur = (kind==='gong')?3.8:2.8; const partials = (kind==='gong')? [180, 240, 320, 420, 520] : [440, 660, 880, 990]; const gains =     (kind==='gong')? [0.9, 0.6, 0.45, 0.3, 0.22] : [0.8, 0.35, 0.25, 0.15]; const oscs=[]; for(let i=0;i<partials.length;i++){ const o=ctx.createOscillator(); o.type = (kind==='gong')?'sine':'sine'; o.frequency.value=partials[i]; const g=ctx.createGain(); g.gain.value = 0.0001; o.connect(g).connect(out); g.gain.setValueAtTime(0.0001, now); g.gain.exponentialRampToValueAtTime(gains[i], now+0.02+i*0.005); g.gain.exponentialRampToValueAtTime(0.0001, now+envDur*(1 - i*0.06)); o.start(now); o.stop(now+envDur+0.2); oscs.push(o);} // ramp master chime
+    function playChime(kind){ ensureAudio(); if(kind==='none') return; const out=ctx.createGain(); out.gain.value=0.0; out.connect(masterGain); const now=ctx.currentTime; const envDur = (kind==='gong')?3.8:2.8; const partials = (kind==='gong')? [180, 240, 320, 420, 520] : [440, 660, 880, 990]; const gains = (kind==='gong')? [0.9, 0.6, 0.45, 0.3, 0.22] : [0.8, 0.35, 0.25, 0.15]; const oscs=[]; for(let i=0;i<partials.length;i++){ const o=ctx.createOscillator(); o.type='sine'; o.frequency.value=partials[i]; const g=ctx.createGain(); g.gain.value = 0.0001; o.connect(g).connect(out); g.gain.setValueAtTime(0.0001, now); g.gain.exponentialRampToValueAtTime(gains[i], now+0.02+i*0.005); g.gain.exponentialRampToValueAtTime(0.0001, now+envDur*(1 - i*0.06)); o.start(now); o.stop(now+envDur+0.2); oscs.push(o);} // ramp master chime
       out.gain.setValueAtTime(0.0001, now); out.gain.exponentialRampToValueAtTime(0.9, now+0.01); out.gain.exponentialRampToValueAtTime(0.0001, now+envDur+0.25);
       setTimeout(()=>{ try{out.disconnect();}catch{} }, (envDur+0.3)*1000);
     }
@@ -402,15 +490,15 @@
     pauseBtn.addEventListener('click', ()=>{
       if(!ctx) return;
       if(ctx.state==='running'){
-        ctx.suspend(); clearTicker(); pauseBtn.textContent=i18n[LANG].resume;
+        ctx.suspend(); clearTicker(); setPauseButtonState();
       } else {
-        ctx.resume(); clearTicker(); ticker=setInterval(()=>{ remaining-=1; updateUI(); if(remaining<=0){ clearTicker(); onPhaseEnd(); } },1000); pauseBtn.textContent=i18n[LANG].pause;
+        ctx.resume(); clearTicker(); ticker=setInterval(()=>{ remaining-=1; updateUI(); if(remaining<=0){ clearTicker(); onPhaseEnd(); } },1000); setPauseButtonState();
       }
     });
 
     resetBtn.addEventListener('click', ()=>{
       clearTicker(); if(stopCurrentSound){ stopCurrentSound(); stopCurrentSound=null; }
-      currentPhase='idle'; remaining=parseFloat(focusMinutesEl.value)*60 || 1500; totalPhase=remaining; totalCycles=Math.max(1, parseInt(cyclesCountEl.value,10) || 1); cyclesDone=0; currentCycle=0; updateUI(); startBtn.disabled=false; pauseBtn.disabled=true; pauseBtn.textContent=i18n[LANG].pause; resetBtn.disabled=true; if(ctx && ctx.state==='suspended') ctx.resume();
+      currentPhase='idle'; remaining=parseFloat(focusMinutesEl.value)*60 || 1500; totalPhase=remaining; totalCycles=Math.max(1, parseInt(cyclesCountEl.value,10) || 1); cyclesDone=0; currentCycle=0; updateUI(); startBtn.disabled=false; pauseBtn.disabled=true; setPauseButtonState(); resetBtn.disabled=true; if(ctx && ctx.state==='suspended') ctx.resume();
     });
 
     repeatYes && repeatYes.addEventListener('click', ()=>{ repeatDialog.close(); speakMsg('next_focus'); setTimeout(()=> startRun(), 300); });
